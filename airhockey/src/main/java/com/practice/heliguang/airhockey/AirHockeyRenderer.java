@@ -18,6 +18,7 @@ import static android.opengl.GLES20.GL_FLOAT;
 import static android.opengl.GLES20.GL_LINES;
 import static android.opengl.GLES20.GL_POINTS;
 import static android.opengl.GLES20.GL_TRIANGLES;
+import static android.opengl.GLES20.GL_TRIANGLE_FAN;
 import static android.opengl.GLES20.glClear;
 import static android.opengl.GLES20.glClearColor;
 import static android.opengl.GLES20.glDrawArrays;
@@ -45,32 +46,35 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer{
 
     private int program;
 
-    private static final String U_COLOR = "u_Color";
-    private int uColorLocation;
-
     private static final String A_POSITION = "a_Position";
     private int aPositionLocation;
+
+    private static final String A_COLOR = "a_Color";
+    private static final int COLOR_COMPONENT_COUNT = 3;
+    private static final int STRIDE = (POSITION_COMPONENT_COUNT + COLOR_COMPONENT_COUNT) * BYTE_PER_FLOAT;
+
+    private int aColorLoacation;
 
     public AirHockeyRenderer(Context context) {
         this.context = context;
         float[] tableVerticesWithTriangles = {
                 // 逆时针顺序定义三角形的三个顶点，这种成为 卷曲顺序(winding order)。
                 // 可优化性能、可以指出一个三角形属于任何给定物体的前面或后面
-                -0.5f,  -0.5f,
-                 0.5f,   0.5f,
-                -0.5f,   0.5f,
-
-                -0.5f,  -0.5f,
-                 0.5f,  -0.5f,
-                 0.5f,   0.5f,
+                // 定义三角扇形的顶点属性 X Y R G B
+                    0,      0,   1f,   1f,   1f,
+                -0.5f,  -0.5f, 0.7f, 0.7f, 0.7f,
+                 0.5f,  -0.5f, 0.7f, 0.7f, 0.7f,
+                 0.5f,   0.5f, 0.7f, 0.7f, 0.7f,
+                -0.5f,   0.5f, 0.7f, 0.7f, 0.7f,
+                -0.5f,  -0.5f, 0.7f, 0.7f, 0.7f,
 
                 // 中间分界线
-                -0.5f,     0f,
-                 0.5f,     0f,
+                -0.5f,     0f,   1f,   0f,   0f,
+                 0.5f,     0f,   1f,   0f,   0f,
 
                 // 两个木槌的位置
-                   0f, -0.25f,
-                   0f,  0.25f
+                   0f, -0.25f,   0f,   0f,   1f,
+                   0f,  0.25f,   1f,   0f,   0f
         };
 
         // 通过JAVA类，分配本地内存块
@@ -102,8 +106,8 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer{
 
         glUseProgram(program);  // 告诉OpenGL绘制任何东西到屏幕使用该program
 
-        uColorLocation = glGetUniformLocation(program, U_COLOR);
         aPositionLocation = glGetAttribLocation(program, A_POSITION);
+        aColorLoacation = glGetAttribLocation(program, A_COLOR);
 
         vertexData.position(0); // 设置缓冲区指针位置
         glVertexAttribPointer(  // 设置OpenGL在vertexData中查找a_Position对应数据
@@ -111,9 +115,20 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer{
                 POSITION_COMPONENT_COUNT,   // 每个属性数据的计数，或者对于这个属性，有多少个分量与每一个顶点相关联
                 GL_FLOAT,   // 数据类型
                 false,  // 当数据为整形数据时，才有意义
-                0,  // 当一个数组中存储多于一个属性时，才有意义
+                STRIDE,  // 当一个数组中存储多于一个属性时，才有意义
                 vertexData);
         glEnableVertexAttribArray(aPositionLocation);  // 使能
+
+        vertexData.position(POSITION_COMPONENT_COUNT);
+        glVertexAttribPointer(
+                aColorLoacation,
+                COLOR_COMPONENT_COUNT,
+                GL_FLOAT,
+                false,
+                STRIDE,
+                vertexData
+        );
+        glEnableVertexAttribArray(aColorLoacation);
     }
 
     @Override
@@ -135,18 +150,14 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer{
         glClear(GL_COLOR_BUFFER_BIT);   // 擦除屏幕所有颜色，并使用glClearColor()定义的颜色填充整个屏幕
 
         // 画桌子
-        glUniform4f(uColorLocation, 1.0f, 1.0f, 1.0f, 1.0f);    // 更新着色器代码中u_Color值
-        glDrawArrays(GL_TRIANGLES, 0, 6);   // 取6个数据画三角形
+        glDrawArrays(GL_TRIANGLE_FAN, 0, 6);   // 取6个数据画三角形
 
         // 画分界线
-        glUniform4f(uColorLocation, 1.0f, 0.0f, 0.0f, 1.0f);
         glDrawArrays(GL_LINES, 6, 2);
 
         // 画木槌
-        glUniform4f(uColorLocation, 0.0f, 0.0f, 1.0f, 1.0f);
         glDrawArrays(GL_POINTS, 8, 1);
 
-        glUniform4f(uColorLocation, 1.0f, 0.0f, 1.0f, 1.0f);
         glDrawArrays(GL_POINTS, 9, 1);
     }
 }
