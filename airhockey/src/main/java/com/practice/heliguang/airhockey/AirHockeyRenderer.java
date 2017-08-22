@@ -17,7 +17,6 @@ import static android.opengl.GLES20.GL_COLOR_BUFFER_BIT;
 import static android.opengl.GLES20.GL_FLOAT;
 import static android.opengl.GLES20.GL_LINES;
 import static android.opengl.GLES20.GL_POINTS;
-import static android.opengl.GLES20.GL_TRIANGLES;
 import static android.opengl.GLES20.GL_TRIANGLE_FAN;
 import static android.opengl.GLES20.glClear;
 import static android.opengl.GLES20.glClearColor;
@@ -25,10 +24,11 @@ import static android.opengl.GLES20.glDrawArrays;
 import static android.opengl.GLES20.glEnableVertexAttribArray;
 import static android.opengl.GLES20.glGetAttribLocation;
 import static android.opengl.GLES20.glGetUniformLocation;
-import static android.opengl.GLES20.glUniform4f;
+import static android.opengl.GLES20.glUniformMatrix4fv;
 import static android.opengl.GLES20.glUseProgram;
 import static android.opengl.GLES20.glVertexAttribPointer;
 import static android.opengl.GLES20.glViewport;
+import static android.opengl.Matrix.orthoM;
 
 /**
  * Created by heliguang on 2017/8/21.
@@ -55,6 +55,12 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer{
 
     private int aColorLoacation;
 
+    private static final String U_MATRIX = "u_Matrix";
+
+    private final float[] projectionMatrix = new float[16];
+
+    private int uMatrixLocation;
+
     public AirHockeyRenderer(Context context) {
         this.context = context;
         float[] tableVerticesWithTriangles = {
@@ -62,19 +68,19 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer{
                 // 可优化性能、可以指出一个三角形属于任何给定物体的前面或后面
                 // 定义三角扇形的顶点属性 X Y R G B
                     0,      0,   1f,   1f,   1f,
-                -0.5f,  -0.5f, 0.7f, 0.7f, 0.7f,
-                 0.5f,  -0.5f, 0.7f, 0.7f, 0.7f,
-                 0.5f,   0.5f, 0.7f, 0.7f, 0.7f,
-                -0.5f,   0.5f, 0.7f, 0.7f, 0.7f,
-                -0.5f,  -0.5f, 0.7f, 0.7f, 0.7f,
+                -0.5f,  -0.8f, 0.7f, 0.7f, 0.7f,
+                 0.5f,  -0.8f, 0.7f, 0.7f, 0.7f,
+                 0.5f,   0.8f, 0.7f, 0.7f, 0.7f,
+                -0.5f,   0.8f, 0.7f, 0.7f, 0.7f,
+                -0.5f,  -0.8f, 0.7f, 0.7f, 0.7f,
 
                 // 中间分界线
                 -0.5f,     0f,   1f,   0f,   0f,
                  0.5f,     0f,   1f,   0f,   0f,
 
                 // 两个木槌的位置
-                   0f, -0.25f,   0f,   0f,   1f,
-                   0f,  0.25f,   1f,   0f,   0f
+                   0f,  -0.4f,   0f,   0f,   1f,
+                   0f,   0.4f,   1f,   0f,   0f
         };
 
         // 通过JAVA类，分配本地内存块
@@ -108,6 +114,7 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer{
 
         aPositionLocation = glGetAttribLocation(program, A_POSITION);
         aColorLoacation = glGetAttribLocation(program, A_COLOR);
+        uMatrixLocation = glGetUniformLocation(program, U_MATRIX);
 
         vertexData.position(0); // 设置缓冲区指针位置
         glVertexAttribPointer(  // 设置OpenGL在vertexData中查找a_Position对应数据
@@ -136,6 +143,19 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer{
         Logger.d(TAG, "onSurfaceChanged()");
 
         glViewport(0, 0, width, height);    // 设置OpenGL可以用来渲染的surface大小
+
+        final float aspectRatio = width > height ?
+                (float) width / (float) height :
+                (float) height / (float) width;
+
+
+        if (width > height) {
+            // Landscape
+            orthoM(projectionMatrix, 0, -aspectRatio, aspectRatio, -1f, 1f, -1f, 1f);
+        } else {
+            // Portrait or square
+            orthoM(projectionMatrix, 0, -1f, 1f, -aspectRatio, aspectRatio, -1f, 1f);
+        }
     }
 
     /*
@@ -148,6 +168,8 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer{
         Logger.d(TAG, "onDrawFrame()");
 
         glClear(GL_COLOR_BUFFER_BIT);   // 擦除屏幕所有颜色，并使用glClearColor()定义的颜色填充整个屏幕
+
+        glUniformMatrix4fv(uMatrixLocation, 1, false, projectionMatrix, 0);
 
         // 画桌子
         glDrawArrays(GL_TRIANGLE_FAN, 0, 6);   // 取6个数据画三角形
