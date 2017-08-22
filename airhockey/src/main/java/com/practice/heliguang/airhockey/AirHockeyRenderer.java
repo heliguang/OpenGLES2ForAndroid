@@ -3,6 +3,7 @@ package com.practice.heliguang.airhockey;
 import android.content.Context;
 import android.opengl.GLSurfaceView;
 
+import com.practice.heliguang.opengles2library.MatrixHelper;
 import com.practice.heliguang.opengles2library.ShaderHelper;
 import com.practice.heliguang.opengles2library.TextResourceReader;
 
@@ -28,7 +29,10 @@ import static android.opengl.GLES20.glUniformMatrix4fv;
 import static android.opengl.GLES20.glUseProgram;
 import static android.opengl.GLES20.glVertexAttribPointer;
 import static android.opengl.GLES20.glViewport;
-import static android.opengl.Matrix.orthoM;
+import static android.opengl.Matrix.multiplyMM;
+import static android.opengl.Matrix.rotateM;
+import static android.opengl.Matrix.setIdentityM;
+import static android.opengl.Matrix.translateM;
 
 /**
  * Created by heliguang on 2017/8/21.
@@ -53,11 +57,12 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer{
     private static final int COLOR_COMPONENT_COUNT = 3;
     private static final int STRIDE = (POSITION_COMPONENT_COUNT + COLOR_COMPONENT_COUNT) * BYTE_PER_FLOAT;
 
-    private int aColorLoacation;
+    private int aColorLocation;
 
     private static final String U_MATRIX = "u_Matrix";
 
     private final float[] projectionMatrix = new float[16];
+    private final float[] modelMatrix = new float[16];
 
     private int uMatrixLocation;
 
@@ -113,7 +118,7 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer{
         glUseProgram(program);  // 告诉OpenGL绘制任何东西到屏幕使用该program
 
         aPositionLocation = glGetAttribLocation(program, A_POSITION);
-        aColorLoacation = glGetAttribLocation(program, A_COLOR);
+        aColorLocation = glGetAttribLocation(program, A_COLOR);
         uMatrixLocation = glGetUniformLocation(program, U_MATRIX);
 
         vertexData.position(0); // 设置缓冲区指针位置
@@ -128,14 +133,14 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer{
 
         vertexData.position(POSITION_COMPONENT_COUNT);
         glVertexAttribPointer(
-                aColorLoacation,
+                aColorLocation,
                 COLOR_COMPONENT_COUNT,
                 GL_FLOAT,
                 false,
                 STRIDE,
                 vertexData
         );
-        glEnableVertexAttribArray(aColorLoacation);
+        glEnableVertexAttribArray(aColorLocation);
     }
 
     @Override
@@ -144,18 +149,18 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer{
 
         glViewport(0, 0, width, height);    // 设置OpenGL可以用来渲染的surface大小
 
-        final float aspectRatio = width > height ?
-                (float) width / (float) height :
-                (float) height / (float) width;
+        // 生成投影矩阵，45度视野，视锥体从z值为-1位置开始，在z值-10位置结束
+        MatrixHelper.perspectiveM(projectionMatrix, 45, (float) width / (float) height, 1f, 10f);
 
+        setIdentityM(modelMatrix, 0);   // 设置为单位矩阵
 
-        if (width > height) {
-            // Landscape
-            orthoM(projectionMatrix, 0, -aspectRatio, aspectRatio, -1f, 1f, -1f, 1f);
-        } else {
-            // Portrait or square
-            orthoM(projectionMatrix, 0, -1f, 1f, -aspectRatio, aspectRatio, -1f, 1f);
-        }
+        translateM(modelMatrix, 0, 0f, 0f, -2.5f);    // 沿z轴平移-2.5
+        rotateM(modelMatrix, 0, -60f, 1f, 0f, 0f);  // 绕x轴旋转-60°
+
+        final float[] temp = new float[16];
+        multiplyMM(temp, 0, projectionMatrix, 0, modelMatrix, 0);   // 将投影矩阵和模型矩阵相乘
+
+        System.arraycopy(temp, 0, projectionMatrix, 0, temp.length);
     }
 
     /*
