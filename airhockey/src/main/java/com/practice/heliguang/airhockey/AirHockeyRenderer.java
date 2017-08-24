@@ -4,6 +4,7 @@ import android.content.Context;
 import android.opengl.GLSurfaceView;
 
 import com.practice.heliguang.airhockey.objects.Mallet;
+import com.practice.heliguang.airhockey.objects.Puck;
 import com.practice.heliguang.airhockey.objects.Table;
 import com.practice.heliguang.airhockey.programs.ColorShaderProgram;
 import com.practice.heliguang.airhockey.programs.TextureShaderProgram;
@@ -19,7 +20,9 @@ import static android.opengl.GLES20.glClearColor;
 import static android.opengl.GLES20.glViewport;
 import static android.opengl.Matrix.multiplyMM;
 import static android.opengl.Matrix.rotateM;
+import static android.opengl.Matrix.scaleM;
 import static android.opengl.Matrix.setIdentityM;
+import static android.opengl.Matrix.setLookAtM;
 import static android.opengl.Matrix.translateM;
 
 /**
@@ -36,11 +39,16 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer{
 
     private Table table;
     private Mallet mallet;
+    private Puck puck;
 
     private TextureShaderProgram textureProgram;
     private ColorShaderProgram colorProgram;
 
     private int texture;
+
+    private final float[] viewMatrix = new float[16];
+    private final float[] viewProjectionMatrix = new float[16];
+    private final float[] modelViewProjectionMatrix = new float[16];
 
     public AirHockeyRenderer(Context context) {
         this.context = context;
@@ -53,7 +61,8 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer{
         glClearColor(0.5f, 0.5f, 0.5f, 0.5f);   // 当屏幕清空后，会显示这个颜色
 
         table = new Table();
-        mallet = new Mallet();
+        mallet = new Mallet(0.08f, 0.15f, 32);
+        puck = new Puck(0.06f, 0.02f, 32);
 
         textureProgram = new TextureShaderProgram(context);
         colorProgram = new ColorShaderProgram(context);
@@ -69,16 +78,7 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer{
 
         // 生成投影矩阵，45度视野，视锥体从z值为-1位置开始，在z值-10位置结束
         MatrixHelper.perspectiveM(projectionMatrix, 45, (float) width / (float) height, 1f, 10f);
-
-        setIdentityM(modelMatrix, 0);   // 设置为单位矩阵
-
-        translateM(modelMatrix, 0, 0f, 0f, -2.5f);    // 沿z轴平移-2.5
-        rotateM(modelMatrix, 0, -60f, 1f, 0f, 0f);  // 绕x轴旋转-60°
-
-        final float[] temp = new float[16];
-        multiplyMM(temp, 0, projectionMatrix, 0, modelMatrix, 0);   // 将投影矩阵和模型矩阵相乘
-
-        System.arraycopy(temp, 0, projectionMatrix, 0, temp.length);
+        setLookAtM(viewMatrix, 0, 0f, 1.2f, 2.2f, 0f, 0f, 0f, 0f, 1f, 0f);  // 设置视图矩阵
     }
 
     /*
@@ -92,14 +92,39 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer{
 
         glClear(GL_COLOR_BUFFER_BIT);   // 擦除屏幕所有颜色，并使用glClearColor()定义的颜色填充整个屏幕
 
+        multiplyMM(viewProjectionMatrix, 0, projectionMatrix, 0, viewMatrix, 0);
+
+        positionTableInScene();
         textureProgram.useProgram();
-        textureProgram.setUniforms(projectionMatrix, texture);
+        textureProgram.setUniforms(modelViewProjectionMatrix, texture);
         table.bindData(textureProgram);
         table.draw();
 
+        positionObjectInScene(0f, mallet.height / 2f, -0.4f);
         colorProgram.useProgram();
-        colorProgram.setUniform(projectionMatrix);
+        colorProgram.setUniform(modelViewProjectionMatrix, 1f, 0f, 0f);
         mallet.bindData(colorProgram);
         mallet.draw();
+
+        positionObjectInScene(0f, mallet.height / 2f, 0.4f);
+        colorProgram.setUniform(modelViewProjectionMatrix, 0f, 0f, 1f);
+        mallet.draw();
+
+        positionObjectInScene(0f, puck.height / 2f, 0f);
+        colorProgram.setUniform(modelViewProjectionMatrix, 0.8f, 0.8f, 1f);
+        puck.bindData(colorProgram);
+        puck.draw();
+    }
+
+    private void positionObjectInScene(float x, float y, float z) {
+        setIdentityM(modelMatrix, 0);
+        translateM(modelMatrix, 0, x, y, z);
+        multiplyMM(modelViewProjectionMatrix, 0, viewProjectionMatrix, 0, modelMatrix, 0);
+    }
+
+    private void positionTableInScene() {
+        setIdentityM(modelMatrix, 0);
+        rotateM(modelMatrix, 0, -90f, 1f, 0f, 0f);
+        multiplyMM(modelViewProjectionMatrix, 0, viewProjectionMatrix, 0, modelMatrix, 0);
     }
 }

@@ -1,34 +1,27 @@
 package com.practice.heliguang.airhockey.objects;
 
-import com.practice.heliguang.airhockey.Constants;
 import com.practice.heliguang.airhockey.data.VertexArray;
 import com.practice.heliguang.airhockey.programs.ColorShaderProgram;
 import com.practice.heliguang.opengles2library.Gemometry;
 
 import java.util.List;
 
-import static android.opengl.GLES20.GL_POINTS;
-import static android.opengl.GLES20.glDrawArrays;
-
 /**
  * Created by heliguang on 2017/8/24.
  */
 
-public class Mallet {
-    private static final int POSITION_COMPONENT_COUNT = 3;
+public class Puck {
+    private static final int POSITION_COMPONECT_COUNT = 3;
 
-    public final float radius;
-    public final float height;
+    public final float radius, height;
 
     private final VertexArray vertexArray;
     private final List<ObjectBuilder.DrawCommand> drawList;
 
-    public Mallet(float radius, float height, int numPointsAroundMallet) {
-        ObjectBuilder.GeneratedData generatedData = ObjectBuilder.createMallet(
-                new Gemometry.Point(0f, 0f, 0f),
-                radius,
-                height,
-                numPointsAroundMallet
+    public Puck(float radius, float height, int numPointsAroundPuck) {
+        ObjectBuilder.GeneratedData generatedData = ObjectBuilder.createPuck(
+                new Gemometry.Cylinder(new Gemometry.Point(0f, 0f, 0f), radius, height),
+                numPointsAroundPuck
         );
 
         this.radius = radius;
@@ -42,7 +35,7 @@ public class Mallet {
         vertexArray.setVertexAttribPointer(
                 0,
                 colorShaderProgram.getPositionAttributeLocation(),
-                POSITION_COMPONENT_COUNT,
+                POSITION_COMPONECT_COUNT,
                 0
         );
     }

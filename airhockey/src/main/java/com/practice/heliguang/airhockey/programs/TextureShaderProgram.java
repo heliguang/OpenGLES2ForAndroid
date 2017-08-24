@@ -30,7 +30,7 @@ public class TextureShaderProgram extends ShaderProgram {
         uMatrixLocation = glGetUniformLocation(program, U_MATRIX);
         uTextureUnitLocation = glGetUniformLocation(program, U_TEXTURE_UNIT);
 
-        aPositionLocation = glGetAttribLocation(program, A_POSITON);
+        aPositionLocation = glGetAttribLocation(program, A_POSITION);
         aTextureCoordinatesLocation = glGetAttribLocation(program, A_TEXTURE_COORDINATES);
     }
 
