@@ -2,7 +2,7 @@ package com.practice.heliguang.airhockey.objects;
 
 import com.practice.heliguang.airhockey.data.VertexArray;
 import com.practice.heliguang.airhockey.programs.ColorShaderProgram;
-import com.practice.heliguang.opengles2library.Gemometry;
+import com.practice.heliguang.opengles2library.Geometry;
 
 import java.util.List;
 
@@ -20,7 +20,7 @@ public class Puck {
 
     public Puck(float radius, float height, int numPointsAroundPuck) {
         ObjectBuilder.GeneratedData generatedData = ObjectBuilder.createPuck(
-                new Gemometry.Cylinder(new Gemometry.Point(0f, 0f, 0f), radius, height),
+                new Geometry.Cylinder(new Geometry.Point(0f, 0f, 0f), radius, height),
                 numPointsAroundPuck
         );
 

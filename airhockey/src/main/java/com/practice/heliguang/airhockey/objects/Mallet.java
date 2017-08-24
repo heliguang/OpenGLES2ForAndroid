@@ -1,14 +1,10 @@
 package com.practice.heliguang.airhockey.objects;
 
-import com.practice.heliguang.airhockey.Constants;
 import com.practice.heliguang.airhockey.data.VertexArray;
 import com.practice.heliguang.airhockey.programs.ColorShaderProgram;
-import com.practice.heliguang.opengles2library.Gemometry;
+import com.practice.heliguang.opengles2library.Geometry;
 
 import java.util.List;
-
-import static android.opengl.GLES20.GL_POINTS;
-import static android.opengl.GLES20.glDrawArrays;
 
 /**
  * Created by heliguang on 2017/8/24.
@@ -25,7 +21,7 @@ public class Mallet {
 
     public Mallet(float radius, float height, int numPointsAroundMallet) {
         ObjectBuilder.GeneratedData generatedData = ObjectBuilder.createMallet(
-                new Gemometry.Point(0f, 0f, 0f),
+                new Geometry.Point(0f, 0f, 0f),
                 radius,
                 height,
                 numPointsAroundMallet

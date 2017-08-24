@@ -1,6 +1,6 @@
 package com.practice.heliguang.airhockey.objects;
 
-import com.practice.heliguang.opengles2library.Gemometry;
+import com.practice.heliguang.opengles2library.Geometry;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,12 +42,12 @@ public class ObjectBuilder {
         return (numPoints + 1) * 2;
     }
 
-    static GeneratedData createPuck(Gemometry.Cylinder puck, int numPoints) {
+    static GeneratedData createPuck(Geometry.Cylinder puck, int numPoints) {
         int size = sizeOfCircleInVertices(numPoints) + sizeOfOpenCylinderInVertices(numPoints);
 
         ObjectBuilder builder = new ObjectBuilder(size);
 
-        Gemometry.Circle puckTop = new Gemometry.Circle(
+        Geometry.Circle puckTop = new Geometry.Circle(
                 puck.center.translateY(puck.height / 2f),
                 puck.radius
         );
@@ -58,18 +58,18 @@ public class ObjectBuilder {
         return builder.build();
     }
 
-    static GeneratedData createMallet(Gemometry.Point center, float radius, float height, int numPoints) {
+    static GeneratedData createMallet(Geometry.Point center, float radius, float height, int numPoints) {
         int size = sizeOfCircleInVertices(numPoints) * 2 + sizeOfOpenCylinderInVertices(numPoints) * 2;
 
         ObjectBuilder builder = new ObjectBuilder(size);
 
         float baseHeight = height * 0.25f;
 
-        Gemometry.Circle baseCircle = new Gemometry.Circle(
+        Geometry.Circle baseCircle = new Geometry.Circle(
                 center.translateY(-baseHeight),
                 radius
         );
-        Gemometry.Cylinder baseCylinder = new Gemometry.Cylinder(
+        Geometry.Cylinder baseCylinder = new Geometry.Cylinder(
                 baseCircle.center.translateY(-baseHeight / 2f),
                 radius,
                 baseHeight
@@ -81,11 +81,11 @@ public class ObjectBuilder {
         float handleHeight = height * 0.75f;
         float handleRadius = radius / 3f;
 
-        Gemometry.Circle handleCircle = new Gemometry.Circle(
+        Geometry.Circle handleCircle = new Geometry.Circle(
                 center.translateY(height * 0.5f),
                 handleRadius
         );
-        Gemometry.Cylinder handleCylinder = new Gemometry.Cylinder(
+        Geometry.Cylinder handleCylinder = new Geometry.Cylinder(
                 handleCircle.center.translateY(-handleHeight / 2f),
                 handleRadius,
                 handleHeight
@@ -97,7 +97,7 @@ public class ObjectBuilder {
         return builder.build();
     }
 
-    private void appendCircle(Gemometry.Circle circle, int numPoints) {
+    private void appendCircle(Geometry.Circle circle, int numPoints) {
         final int startVertex = offset / FLOATS_PER_VERTEX;
         final int numVertices = sizeOfCircleInVertices(numPoints);
 
@@ -121,7 +121,7 @@ public class ObjectBuilder {
         });
     }
 
-    private void appendOpenCylinder(Gemometry.Cylinder cylinder, final int numPoints) {
+    private void appendOpenCylinder(Geometry.Cylinder cylinder, final int numPoints) {
         final int startVertex = offset / FLOATS_PER_VERTEX;
         final int numVertices = sizeOfOpenCylinderInVertices(numPoints);
 
