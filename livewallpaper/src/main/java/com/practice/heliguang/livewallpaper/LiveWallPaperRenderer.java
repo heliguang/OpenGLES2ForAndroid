@@ -9,6 +9,7 @@ import com.practice.heliguang.livewallpaper.objects.ParticleSystem;
 import com.practice.heliguang.livewallpaper.programs.ParticleShaderProgram;
 import com.practice.heliguang.opengles2library.Geometry;
 import com.practice.heliguang.opengles2library.MatrixHelper;
+import com.practice.heliguang.opengles2library.TextureHelper;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
@@ -43,6 +44,8 @@ public class LiveWallPaperRenderer implements GLSurfaceView.Renderer {
     private ParticleShooter blueParticleShooter;
     private long globalStartTime;
 
+    private int texture;
+
     public LiveWallPaperRenderer(Context context) {
         this.context = context;
     }
@@ -57,6 +60,8 @@ public class LiveWallPaperRenderer implements GLSurfaceView.Renderer {
         particleProgram = new ParticleShaderProgram(context);
         particleSystem = new ParticleSystem(10000);
         globalStartTime = System.currentTimeMillis();
+
+        texture = TextureHelper.loadTexture(context, R.mipmap.particle_texture);
 
         final Geometry.Vector particleDirection = new Geometry.Vector(0f, 0.5f, 0f);
 
@@ -109,7 +114,7 @@ public class LiveWallPaperRenderer implements GLSurfaceView.Renderer {
         blueParticleShooter.addParticles(particleSystem, currentTime, 5);
 
         particleProgram.useProgram();
-        particleProgram.setUniform(viewProjectionMatrix, currentTime);
+        particleProgram.setUniform(viewProjectionMatrix, currentTime, texture);
         particleSystem.bindData(particleProgram);
         particleSystem.draw();
     }

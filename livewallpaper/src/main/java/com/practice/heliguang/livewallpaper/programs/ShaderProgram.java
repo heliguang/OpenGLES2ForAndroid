@@ -22,6 +22,8 @@ public class ShaderProgram {
     public static final String A_DIRECTION_VECTOR = "a_DirectionVector";
     public static final String A_PARTICLE_START_TIME = "a_ParticleStartTime";
 
+    public static final String U_TEXTURE_UNIT = "u_TextureUnit";
+
     public final int program;
 
     public ShaderProgram(Context context, int vertexShaderResourceId, int fragmentShaderResourceId) {
