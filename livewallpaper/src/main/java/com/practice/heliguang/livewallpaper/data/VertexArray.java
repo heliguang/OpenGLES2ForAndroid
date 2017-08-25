@@ -1,6 +1,6 @@
-package com.practice.heliguang.airhockey.data;
+package com.practice.heliguang.livewallpaper.data;
 
-import com.practice.heliguang.airhockey.Constants;
+import com.practice.heliguang.livewallpaper.Constants;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -30,6 +30,12 @@ public class VertexArray {
         glVertexAttribPointer(attributeLocation, componentCount, GL_FLOAT, false, stride, floatBuffer);
         glEnableVertexAttribArray(attributeLocation);
 
+        floatBuffer.position(0);
+    }
+
+    public void updateBuffer(float[] vertexData, int start, int count) {
+        floatBuffer.position(start);
+        floatBuffer.put(vertexData, start, count);
         floatBuffer.position(0);
     }
 }

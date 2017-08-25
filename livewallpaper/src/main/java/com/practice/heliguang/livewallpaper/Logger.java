@@ -1,4 +1,4 @@
-package com.practice.heliguang.airhockey;
+package com.practice.heliguang.livewallpaper;
 
 import android.util.Log;
 

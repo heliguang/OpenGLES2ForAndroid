@@ -1,4 +1,4 @@
-package com.practice.heliguang.airhockey;
+package com.practice.heliguang.livewallpaper;
 
 /**
  * Created by heliguang on 2017/8/24.
