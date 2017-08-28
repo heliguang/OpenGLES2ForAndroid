@@ -6,7 +6,9 @@ import android.opengl.GLSurfaceView;
 
 import com.practice.heliguang.livewallpaper.objects.ParticleShooter;
 import com.practice.heliguang.livewallpaper.objects.ParticleSystem;
+import com.practice.heliguang.livewallpaper.objects.Skybox;
 import com.practice.heliguang.livewallpaper.programs.ParticleShaderProgram;
+import com.practice.heliguang.livewallpaper.programs.SkyboxShaderProgram;
 import com.practice.heliguang.opengles2library.Geometry;
 import com.practice.heliguang.opengles2library.MatrixHelper;
 import com.practice.heliguang.opengles2library.TextureHelper;
@@ -20,9 +22,11 @@ import static android.opengl.GLES20.GL_ONE;
 import static android.opengl.GLES20.glBlendFunc;
 import static android.opengl.GLES20.glClear;
 import static android.opengl.GLES20.glClearColor;
+import static android.opengl.GLES20.glDisable;
 import static android.opengl.GLES20.glEnable;
 import static android.opengl.GLES20.glViewport;
 import static android.opengl.Matrix.multiplyMM;
+import static android.opengl.Matrix.rotateM;
 import static android.opengl.Matrix.setIdentityM;
 import static android.opengl.Matrix.translateM;
 
@@ -46,16 +50,30 @@ public class LiveWallPaperRenderer implements GLSurfaceView.Renderer {
 
     private int texture;
 
+    private SkyboxShaderProgram skyboxProgram;
+    private Skybox skybox;
+    private int skyboxTexture;
+
+    private float xRotation, yRotation;
+
     public LiveWallPaperRenderer(Context context) {
         this.context = context;
+    }
+
+    public void handleTouchDrag(float deltaX, float deltaY) {
+        xRotation += deltaX / 16f;
+        yRotation += deltaY / 16f;
+
+        if (yRotation < -90) {
+            yRotation = -90;
+        } else if (yRotation > 90) {
+            yRotation = 90;
+        }
     }
 
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
         glClearColor(0.5f, 0.5f, 0.5f, 0.5f);
-
-        glEnable(GL_BLEND); // 设置使用混合模式
-        glBlendFunc(GL_ONE, GL_ONE);    // 设置混合模式为 累加混合
 
         particleProgram = new ParticleShaderProgram(context);
         particleSystem = new ParticleSystem(10000);
@@ -90,6 +108,18 @@ public class LiveWallPaperRenderer implements GLSurfaceView.Renderer {
                 angleVarianceInDegrees,
                 speedVariance
         );
+
+        skyboxProgram = new SkyboxShaderProgram(context);
+        skybox = new Skybox();
+        skyboxTexture = TextureHelper.loadCubMap(context,
+                new int[]{
+                        R.mipmap.left,
+                        R.mipmap.right,
+                        R.mipmap.bottom,
+                        R.mipmap.top,
+                        R.mipmap.front,
+                        R.mipmap.back
+                });
     }
 
     @Override
@@ -107,15 +137,43 @@ public class LiveWallPaperRenderer implements GLSurfaceView.Renderer {
     public void onDrawFrame(GL10 gl) {
         glClear(GL_COLOR_BUFFER_BIT);
 
+        drawSkybox();
+        drawParticles();
+    }
+
+    private void drawParticles() {
         float currentTime = (System.currentTimeMillis() - globalStartTime) / 1000f;
 
         redParticleShooter.addParticles(particleSystem, currentTime, 5);
         greenParticleShooter.addParticles(particleSystem, currentTime, 5);
         blueParticleShooter.addParticles(particleSystem, currentTime, 5);
 
+        setIdentityM(viewMatrix, 0);
+        rotateM(viewMatrix, 0, -yRotation, 1f, 0f, 0f);
+        rotateM(viewMatrix, 0, -xRotation, 0f, 1f, 0f); // 首先应用y轴旋转，然后应用x轴旋转，FPS样式（第一人称发射者）
+        // 向上向下旋转总是让你向头上看或脚下看，向左向右旋转让你绕着以你脚为中心的圆来回旋转
+        translateM(viewMatrix, 0, 0f, -1.5f, -5f);
+        multiplyMM(viewProjectionMatrix, 0, projectionMatrix, 0, viewMatrix, 0);
+
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_ONE, GL_ONE);
+
         particleProgram.useProgram();
         particleProgram.setUniform(viewProjectionMatrix, currentTime, texture);
         particleSystem.bindData(particleProgram);
         particleSystem.draw();
+
+        glDisable(GL_BLEND);
+    }
+
+    private void drawSkybox() {
+        setIdentityM(viewMatrix, 0);
+        rotateM(viewMatrix, 0, -yRotation, 1f, 0f, 0f);
+        rotateM(viewMatrix, 0, -xRotation, 0f, 1f, 0f);
+        multiplyMM(viewProjectionMatrix, 0, projectionMatrix, 0, viewMatrix, 0);
+        skyboxProgram.useProgram();
+        skyboxProgram.setUniform(viewProjectionMatrix, skyboxTexture);
+        skybox.bindData(skyboxProgram);
+        skybox.draw();
     }
 }
