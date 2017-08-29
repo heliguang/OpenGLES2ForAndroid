@@ -42,7 +42,7 @@ public class ParticleShaderProgram extends ShaderProgram {
         uTextureUnitLocation = glGetUniformLocation(program, U_TEXTURE_UNIT);
     }
 
-    public void setUniform(float[] matrix, float elapsedTime, int textureId) {
+    public void setUniforms(float[] matrix, float elapsedTime, int textureId) {
         glUniformMatrix4fv(uMatrixLocation, 1, false, matrix, 0);
         glUniform1f(uTimeLocation, elapsedTime);
 

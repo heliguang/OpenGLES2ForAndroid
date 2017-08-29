@@ -72,7 +72,7 @@ public class TextureHelper {
      * @param cubeResources
      * @return
      */
-    public static int loadCubMap(Context context, int[] cubeResources) {
+    public static int loadCubeMap(Context context, int[] cubeResources) {
         final int[] textureObjectIds = new int[1];
         glGenTextures(1, textureObjectIds, 0);
 

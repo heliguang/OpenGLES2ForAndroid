@@ -30,7 +30,7 @@ public class SkyboxShaderProgram extends ShaderProgram {
         aPositionLocation = glGetAttribLocation(program, A_POSITION);
     }
 
-    public void setUniform(float[] matrix, int textureId) {
+    public void setUniforms(float[] matrix, int textureId) {
         glUniformMatrix4fv(uMatrixLocation, 1, false, matrix, 0);
 
         glActiveTexture(GL_TEXTURE0);
