@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.opengl.GLSurfaceView;
+import android.os.SystemClock;
 
 import com.practice.heliguang.livewallpaper.objects.Heightmap;
 import com.practice.heliguang.livewallpaper.objects.ParticleShooter;
@@ -49,6 +50,7 @@ import static android.opengl.Matrix.transposeM;
  */
 
 public class LiveWallPaperRenderer implements GLSurfaceView.Renderer {
+    private static final String TAG = "ParticlesRenderer";
     private final Context context;
 
     private final float[] modelMatrix = new float[16];
@@ -64,12 +66,6 @@ public class LiveWallPaperRenderer implements GLSurfaceView.Renderer {
     private HeightmapShaderProgram heightmapProgram;
     private Heightmap heightmap;
 
-    /*
-    private final Vector vectorToLight = new Vector(0.61f, 0.64f, -0.47f).normalize();
-    */
-    /*
-    private final Vector vectorToLight = new Vector(0.30f, 0.35f, -0.89f).normalize();
-    */
     final float[] vectorToLight = {0.30f, 0.35f, -0.89f, 0f};
 
     private final float[] pointLightPositions = new float[]
@@ -97,6 +93,12 @@ public class LiveWallPaperRenderer implements GLSurfaceView.Renderer {
 
     private float xRotation, yRotation;
 
+    private float xOffset, yOffset;
+
+    private long frameStartTimeMs;
+    private long startTimeMs;
+    private int frameCount;
+
     public LiveWallPaperRenderer(Context context) {
         this.context = context;
     }
@@ -115,6 +117,13 @@ public class LiveWallPaperRenderer implements GLSurfaceView.Renderer {
         updateViewMatrices();
     }
 
+    public void handleOffsetsChanged(float xOffset, float yOffset) {
+        // Offsets range from 0 to 1.
+        this.xOffset = (xOffset - 0.5f) * 2.5f;
+        this.yOffset = (yOffset - 0.5f) * 2.5f;
+        updateViewMatrices();
+    }
+
     private void updateViewMatrices() {
         setIdentityM(viewMatrix, 0);
         rotateM(viewMatrix, 0, -yRotation, 1f, 0f, 0f);
@@ -123,7 +132,7 @@ public class LiveWallPaperRenderer implements GLSurfaceView.Renderer {
 
         // We want the translation to apply to the regular view matrix, and not
         // the skybox.
-        translateM(viewMatrix, 0, 0, -1.5f, -5f);
+        translateM(viewMatrix, 0, 0 - xOffset, -1.5f - yOffset, -5f);
 
 //        // This helps us figure out the vector for the sun or the moon.
 //        final float[] tempVec = {0f, 0f, -1f, 1f};
@@ -135,6 +144,17 @@ public class LiveWallPaperRenderer implements GLSurfaceView.Renderer {
 
     @Override
     public void onSurfaceCreated(GL10 glUnused, EGLConfig config) {
+        /*
+        // This might be an alternative to limitFrameRate() that could work on JB 4.2 devices, though
+        // it doesn't seem to work on the Galaxy Nexus.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+            boolean status = EGL14.eglSwapInterval(EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY), 2);
+
+            if (LoggerConfig.ON) {
+                Log.v(TAG, "eglSwapInterval result = " + status);
+            }
+        }
+        */
         glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
@@ -177,10 +197,6 @@ public class LiveWallPaperRenderer implements GLSurfaceView.Renderer {
 
         particleTexture = TextureHelper.loadTexture(context, R.mipmap.particle_texture);
 
-//        skyboxTexture = TextureHelper.loadCubeMap(context,
-//            new int[] { R.drawable.left, R.drawable.right,
-//                        R.drawable.bottom, R.drawable.top,
-//                        R.drawable.front, R.drawable.back});
         skyboxTexture = TextureHelper.loadCubeMap(context,
                 new int[] { R.mipmap.night_left, R.mipmap.night_right,
                         R.mipmap.night_bottom, R.mipmap.night_top,
@@ -196,8 +212,30 @@ public class LiveWallPaperRenderer implements GLSurfaceView.Renderer {
         updateViewMatrices();
     }
 
+    private void limitFrameRate(int framesPerSecond) {
+        long elapsedFrameTimeMs = SystemClock.elapsedRealtime() - frameStartTimeMs;
+        long expectedFrameTimeMs = 1000 / framesPerSecond;
+        long timeToSleepMs = expectedFrameTimeMs - elapsedFrameTimeMs;
+
+        if (timeToSleepMs > 0) {
+            SystemClock.sleep(timeToSleepMs);
+        }
+        frameStartTimeMs = SystemClock.elapsedRealtime();
+    }
+    private void logFrameRate() {
+        long elapsedRealtimeMs = SystemClock.elapsedRealtime();
+        double elapsedSeconds = (elapsedRealtimeMs - startTimeMs) / 1000.0;
+
+        if (elapsedSeconds >= 1.0) {
+            startTimeMs = SystemClock.elapsedRealtime();
+            frameCount = 0;
+        }
+        frameCount++;
+    }
     @Override
     public void onDrawFrame(GL10 glUnused) {
+        limitFrameRate(24);
+        logFrameRate();
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         drawHeightmap();
@@ -214,14 +252,13 @@ public class LiveWallPaperRenderer implements GLSurfaceView.Renderer {
         updateMvpMatrix();
 
         heightmapProgram.useProgram();
-        /*
-        heightmapProgram.setUniforms(modelViewProjectionMatrix, vectorToLight);
-         */
 
         // Put the light positions into eye space.
         final float[] vectorToLightInEyeSpace = new float[4];
         final float[] pointPositionsInEyeSpace = new float[12];
+
         multiplyMV(vectorToLightInEyeSpace, 0, viewMatrix, 0, vectorToLight, 0);
+
         multiplyMV(pointPositionsInEyeSpace, 0, viewMatrix, 0, pointLightPositions, 0);
         multiplyMV(pointPositionsInEyeSpace, 4, viewMatrix, 0, pointLightPositions, 4);
         multiplyMV(pointPositionsInEyeSpace, 8, viewMatrix, 0, pointLightPositions, 8);
@@ -268,21 +305,12 @@ public class LiveWallPaperRenderer implements GLSurfaceView.Renderer {
         glDepthMask(true);
     }
 
-    /*
-    private void updateMvpMatrix() {
-        multiplyMM(tempMatrix, 0, viewMatrix, 0, modelMatrix, 0);
-        multiplyMM(modelViewProjectionMatrix, 0, projectionMatrix, 0, tempMatrix, 0);
-    }
-    */
-
     private void updateMvpMatrix() {
         multiplyMM(modelViewMatrix, 0, viewMatrix, 0, modelMatrix, 0);
         invertM(tempMatrix, 0, modelViewMatrix, 0);
         transposeM(it_modelViewMatrix, 0, tempMatrix, 0);
         multiplyMM(
-                modelViewProjectionMatrix, 0,
-                projectionMatrix, 0,
-                modelViewMatrix, 0);
+                modelViewProjectionMatrix, 0, projectionMatrix, 0, modelViewMatrix, 0);
     }
 
     private void updateMvpMatrixForSkybox() {
