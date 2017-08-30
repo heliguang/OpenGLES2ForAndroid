@@ -35,11 +35,14 @@ import static android.opengl.GLES20.glDepthMask;
 import static android.opengl.GLES20.glDisable;
 import static android.opengl.GLES20.glEnable;
 import static android.opengl.GLES20.glViewport;
+import static android.opengl.Matrix.invertM;
 import static android.opengl.Matrix.multiplyMM;
+import static android.opengl.Matrix.multiplyMV;
 import static android.opengl.Matrix.rotateM;
 import static android.opengl.Matrix.scaleM;
 import static android.opengl.Matrix.setIdentityM;
 import static android.opengl.Matrix.translateM;
+import static android.opengl.Matrix.transposeM;
 
 /**
  * Created by heliguang on 2017/8/25.
@@ -54,9 +57,30 @@ public class LiveWallPaperRenderer implements GLSurfaceView.Renderer {
     private final float[] projectionMatrix = new float[16];
 
     private final float[] tempMatrix = new float[16];
+    private final float[] modelViewMatrix = new float[16];
+    private final float[] it_modelViewMatrix = new float[16];
     private final float[] modelViewProjectionMatrix = new float[16];
+
     private HeightmapShaderProgram heightmapProgram;
     private Heightmap heightmap;
+
+    /*
+    private final Vector vectorToLight = new Vector(0.61f, 0.64f, -0.47f).normalize();
+    */
+    /*
+    private final Vector vectorToLight = new Vector(0.30f, 0.35f, -0.89f).normalize();
+    */
+    final float[] vectorToLight = {0.30f, 0.35f, -0.89f, 0f};
+
+    private final float[] pointLightPositions = new float[]
+            {-1f, 1f, 0f, 1f,
+                    0f, 1f, 0f, 1f,
+                    1f, 1f, 0f, 1f};
+
+    private final float[] pointLightColors = new float[]
+            {1.00f, 0.20f, 0.02f,
+                    0.02f, 0.25f, 0.02f,
+                    0.02f, 0.20f, 1.00f};
 
     private SkyboxShaderProgram skyboxProgram;
     private Skybox skybox;
@@ -100,13 +124,20 @@ public class LiveWallPaperRenderer implements GLSurfaceView.Renderer {
         // We want the translation to apply to the regular view matrix, and not
         // the skybox.
         translateM(viewMatrix, 0, 0, -1.5f, -5f);
+
+//        // This helps us figure out the vector for the sun or the moon.
+//        final float[] tempVec = {0f, 0f, -1f, 1f};
+//        final float[] tempVec2 = new float[4];
+//
+//        Matrix.multiplyMV(tempVec2, 0, viewMatrixForSkybox, 0, tempVec, 0);
+//        Log.v("Testing", Arrays.toString(tempVec2));
     }
 
     @Override
     public void onSurfaceCreated(GL10 glUnused, EGLConfig config) {
         glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
         glEnable(GL_DEPTH_TEST);
-        glEnable(GL_CULL_FACE); // 关闭两面绘制。如果观察点观察，如果卷曲顺序是逆时针的，三角形就会被绘制，否则被丢弃
+        glEnable(GL_CULL_FACE);
 
         heightmapProgram = new HeightmapShaderProgram(context);
         heightmap = new Heightmap(((BitmapDrawable)context.getResources()
@@ -146,43 +177,58 @@ public class LiveWallPaperRenderer implements GLSurfaceView.Renderer {
 
         particleTexture = TextureHelper.loadTexture(context, R.mipmap.particle_texture);
 
+//        skyboxTexture = TextureHelper.loadCubeMap(context,
+//            new int[] { R.drawable.left, R.drawable.right,
+//                        R.drawable.bottom, R.drawable.top,
+//                        R.drawable.front, R.drawable.back});
         skyboxTexture = TextureHelper.loadCubeMap(context,
-                new int[] { R.mipmap.left, R.mipmap.right,
-                        R.mipmap.bottom, R.mipmap.top,
-                        R.mipmap.front, R.mipmap.back});
+                new int[] { R.mipmap.night_left, R.mipmap.night_right,
+                        R.mipmap.night_bottom, R.mipmap.night_top,
+                        R.mipmap.night_front, R.mipmap.night_back});
     }
 
     @Override
     public void onSurfaceChanged(GL10 glUnused, int width, int height) {
         glViewport(0, 0, width, height);
+
         MatrixHelper.perspectiveM(projectionMatrix, 45, (float) width
                 / (float) height, 1f, 100f);
-        /*
-        MatrixHelper.perspectiveM(projectionMatrix, 45, (float) width
-            / (float) height, 1f, 10f);
-        */
         updateViewMatrices();
     }
 
     @Override
     public void onDrawFrame(GL10 glUnused) {
-        /*
-        glClear(GL_COLOR_BUFFER_BIT);
-         */
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         drawHeightmap();
         drawSkybox();
         drawParticles();
     }
+
     private void drawHeightmap() {
         setIdentityM(modelMatrix, 0);
+
         // Expand the heightmap's dimensions, but don't expand the height as
         // much so that we don't get insanely tall mountains.
         scaleM(modelMatrix, 0, 100f, 10f, 100f);
         updateMvpMatrix();
+
         heightmapProgram.useProgram();
-        heightmapProgram.setUniforms(modelViewProjectionMatrix);
+        /*
+        heightmapProgram.setUniforms(modelViewProjectionMatrix, vectorToLight);
+         */
+
+        // Put the light positions into eye space.
+        final float[] vectorToLightInEyeSpace = new float[4];
+        final float[] pointPositionsInEyeSpace = new float[12];
+        multiplyMV(vectorToLightInEyeSpace, 0, viewMatrix, 0, vectorToLight, 0);
+        multiplyMV(pointPositionsInEyeSpace, 0, viewMatrix, 0, pointLightPositions, 0);
+        multiplyMV(pointPositionsInEyeSpace, 4, viewMatrix, 0, pointLightPositions, 4);
+        multiplyMV(pointPositionsInEyeSpace, 8, viewMatrix, 0, pointLightPositions, 8);
+
+        heightmapProgram.setUniforms(modelViewMatrix, it_modelViewMatrix,
+                modelViewProjectionMatrix, vectorToLightInEyeSpace,
+                pointPositionsInEyeSpace, pointLightColors);
         heightmap.bindData(heightmapProgram);
         heightmap.draw();
     }
@@ -192,12 +238,11 @@ public class LiveWallPaperRenderer implements GLSurfaceView.Renderer {
         updateMvpMatrixForSkybox();
 
         glDepthFunc(GL_LEQUAL); // This avoids problems with the skybox itself getting clipped.
-                                // 如果新片段与已经存在的片段相比较近或者二者在同等的距离处，就通过测试
         skyboxProgram.useProgram();
         skyboxProgram.setUniforms(modelViewProjectionMatrix, skyboxTexture);
         skybox.bindData(skyboxProgram);
         skybox.draw();
-        glDepthFunc(GL_LESS);   // 新片段比任何已经存在那里的片段近或者比远平面近，就能通过测试
+        glDepthFunc(GL_LESS);
     }
 
     private void drawParticles() {
@@ -210,8 +255,7 @@ public class LiveWallPaperRenderer implements GLSurfaceView.Renderer {
         setIdentityM(modelMatrix, 0);
         updateMvpMatrix();
 
-        glDepthMask(false); // 在保持测试功能开启的同时禁用深度更新。意味着粒子针对地面进行测试。
-                            // 但是，测试结果不会写入到深度缓冲区，这样粒子就不会彼此遮挡
+        glDepthMask(false);
         glEnable(GL_BLEND);
         glBlendFunc(GL_ONE, GL_ONE);
 
@@ -224,10 +268,23 @@ public class LiveWallPaperRenderer implements GLSurfaceView.Renderer {
         glDepthMask(true);
     }
 
+    /*
     private void updateMvpMatrix() {
         multiplyMM(tempMatrix, 0, viewMatrix, 0, modelMatrix, 0);
         multiplyMM(modelViewProjectionMatrix, 0, projectionMatrix, 0, tempMatrix, 0);
     }
+    */
+
+    private void updateMvpMatrix() {
+        multiplyMM(modelViewMatrix, 0, viewMatrix, 0, modelMatrix, 0);
+        invertM(tempMatrix, 0, modelViewMatrix, 0);
+        transposeM(it_modelViewMatrix, 0, tempMatrix, 0);
+        multiplyMM(
+                modelViewProjectionMatrix, 0,
+                projectionMatrix, 0,
+                modelViewMatrix, 0);
+    }
+
     private void updateMvpMatrixForSkybox() {
         multiplyMM(tempMatrix, 0, viewMatrixForSkybox, 0, modelMatrix, 0);
         multiplyMM(modelViewProjectionMatrix, 0, projectionMatrix, 0, tempMatrix, 0);

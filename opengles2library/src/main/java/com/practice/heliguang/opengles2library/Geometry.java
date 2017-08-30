@@ -22,17 +22,60 @@ public class Geometry {
             return new Point(
                     x + vector.x,
                     y + vector.y,
-                    z + vector.z
-            );
+                    z + vector.z);
+        }
+    }
+
+    public static class Vector  {
+        public final float x, y, z;
+
+        public Vector(float x, float y, float z) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
         }
 
-        @Override
-        public String toString() {
-            return "Point{" +
-                    "x=" + x +
-                    ", y=" + y +
-                    ", z=" + z +
-                    '}';
+        public float length() {
+            return (float) Math.sqrt(
+                    x * x
+                            + y * y
+                            + z * z);
+        }
+
+        // http://en.wikipedia.org/wiki/Cross_product
+        public Vector crossProduct(Vector other) {
+            return new Vector(
+                    (y * other.z) - (z * other.y),
+                    (z * other.x) - (x * other.z),
+                    (x * other.y) - (y * other.x));
+        }
+
+        // http://en.wikipedia.org/wiki/Dot_product
+        public float dotProduct(Vector other) {
+            return x * other.x
+                    + y * other.y
+                    + z * other.z;
+        }
+
+        public Vector scale(float f) {
+            return new Vector(
+                    x * f,
+                    y * f,
+                    z * f);
+        }
+
+        public Vector normalize() {
+            return scale(1f / length());
+        }
+    }
+
+    public static class Ray {
+        public final Point point;
+        public final Vector vector;
+
+        public Ray(Point point, Vector vector) {
+            this.point = point;
+            this.vector = vector;
         }
     }
 
@@ -50,9 +93,6 @@ public class Geometry {
         }
     }
 
-    /**
-     * 圆柱体
-     */
     public static class Cylinder {
         public final Point center;
         public final float radius;
@@ -65,57 +105,6 @@ public class Geometry {
         }
     }
 
-    public static class Vector {
-        public final float x, y, z;
-
-        public Vector(float x, float y, float z) {
-            this.x = x;
-            this.y = y;
-            this.z = z;
-        }
-
-        public float length() {
-            return (float) Math.sqrt(x * x + y * y + z * z);
-        }
-
-        public Vector crossProduct(Vector other) {
-            return new Vector(
-                    (y * other.z) - (z * other.y),
-                    (z * other.x) - (x * other.z),
-                    (x * other.y) - (y * other.x)
-            );
-        }
-
-        public float dotProduct(Vector other) {
-            return x * other.x + y * other.y + z * other.z;
-        }
-
-        public Vector scale(float f) {
-            return new Vector(x * f, y * f, z * f);
-        }
-    }
-
-    public static class Ray {
-        public final Point point;
-        public final Vector vector;
-
-        public Ray(Point point, Vector vector) {
-            this.point = point;
-            this.vector = vector;
-        }
-    }
-
-    public static Vector vectorBetween(Point from, Point to) {
-        return new Vector(
-                to.x - from.x,
-                to.y - from.y,
-                to.z - from.z
-        );
-    }
-
-    /**
-     * 球形
-     */
     public static class Sphere {
         public final Point center;
         public final float radius;
@@ -126,27 +115,9 @@ public class Geometry {
         }
     }
 
-    public static boolean intersects(Sphere sphere, Ray ray) {
-        return distanceBetween(sphere.center, ray) < sphere.radius;
-    }
-
-    public static float distanceBetween(Point point, Ray ray) {
-        Vector p1ToPoint = vectorBetween(ray.point, point);
-        Vector p2ToPoint = vectorBetween(ray.point.translate(ray.vector), point);
-
-        float areaOfTriangleTimesTwo = p1ToPoint.crossProduct(p2ToPoint).length();
-        float lengthOfBase = ray.vector.length();
-
-        float distanceFromPointToRay = areaOfTriangleTimesTwo / lengthOfBase;
-        return distanceFromPointToRay;
-    }
-
-    /**
-     * 平面
-     */
     public static class Plane {
         public final Point point;
-        public final Vector normal; // 法向向量
+        public final Vector normal;
 
         public Plane(Point point, Vector normal) {
             this.point = point;
@@ -154,8 +125,47 @@ public class Geometry {
         }
     }
 
+    public static Vector vectorBetween(Point from, Point to) {
+        return new Vector(
+                to.x - from.x,
+                to.y - from.y,
+                to.z - from.z);
+    }
+
+    public static boolean intersects(Sphere sphere, Ray ray) {
+        return distanceBetween(sphere.center, ray) < sphere.radius;
+    }
+
+    // http://mathworld.wolfram.com/Point-LineDistance3-Dimensional.html
+    // Note that this formula treats Ray as if it extended infinitely past
+    // either point.
+    public static float distanceBetween(Point point, Ray ray) {
+        Vector p1ToPoint = vectorBetween(ray.point, point);
+        Vector p2ToPoint = vectorBetween(ray.point.translate(ray.vector), point);
+
+        // The length of the cross product gives the area of an imaginary
+        // parallelogram having the two vectors as sides. A parallelogram can be
+        // thought of as consisting of two triangles, so this is the same as
+        // twice the area of the triangle defined by the two vectors.
+        // http://en.wikipedia.org/wiki/Cross_product#Geometric_meaning
+        float areaOfTriangleTimesTwo
+                = p1ToPoint.crossProduct(p2ToPoint).length();
+        float lengthOfBase = ray.vector.length();
+
+        // The area of a triangle is also equal to (base * height) / 2. In
+        // other words, the height is equal to (area * 2) / base. The height
+        // of this triangle is the distance from the point to the ray.
+        float distanceFromPointToRay
+                = areaOfTriangleTimesTwo / lengthOfBase;
+        return distanceFromPointToRay;
+    }
+
+    // http://en.wikipedia.org/wiki/Line-plane_intersection
+    // This also treats rays as if they were infinite. It will return a
+    // point full of NaNs if there is no intersection point.
     public static Point intersectionPoint(Ray ray, Plane plane) {
         Vector rayToPlaneVector = vectorBetween(ray.point, plane.point);
+
         float scaleFactor = rayToPlaneVector.dotProduct(plane.normal)
                 / ray.vector.dotProduct(plane.normal);
 
